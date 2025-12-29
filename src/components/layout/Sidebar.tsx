@@ -37,6 +37,9 @@ const employeeNavItems = [
   { path: '/employee/verify', label: 'Verification', icon: ClipboardCheck },
   { path: '/employee/calculation', label: 'Tax Calculation', icon: Calculator },
   { path: '/employee/requests', label: 'Info Requests', icon: MessageSquare },
+  { path: '/employee/generateBill', label: 'Generate bill', icon: FileText },
+  { path: '/employee/final-approval', label: 'Final Approval', icon: FileText },
+
 ];
 
 const fbrNavItems = [

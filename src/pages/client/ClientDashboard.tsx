@@ -5,12 +5,12 @@ import { StatCard, StatusBadge, TimelineItem } from '@/components/shared/StatCar
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   FileText,
   CreditCard,
   Clock,
   CheckCircle,
-  AlertCircle,
   Plus,
   ArrowRight,
   TrendingUp,
@@ -19,24 +19,25 @@ import {
 import { formatCurrency } from '@/lib/mockData';
 
 const ClientDashboard = () => {
-  const CLIENT_ID = 'c1'; // 🔐 later replace with auth user
+  const { user } = useAuth();
+  const CLIENT_ID = user.id;
 
   const [returns, setReturns] = useState<any[]>([]);
   const [filteredReturns, setFilteredReturns] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  /* ===============================
-     FETCH RETURNS FROM BACKEND
-     =============================== */
+  // ===============================
+  // FETCH RETURNS
+  // ===============================
   useEffect(() => {
     const fetchReturns = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/client/returns');
+        const res = await fetch('http://localhost:5000/api/client/dashboard/returns');
         const data = await res.json();
-
-        const clientReturns = data.filter((r: any) => r.clientId === CLIENT_ID);
+        const clientReturns = data.filter((r: any) => Number(r.clientId) === Number(CLIENT_ID));
         setReturns(clientReturns);
         setFilteredReturns(clientReturns);
       } catch (err) {
@@ -49,9 +50,9 @@ const ClientDashboard = () => {
     fetchReturns();
   }, []);
 
-  /* ===============================
-     SEARCH FILTER
-     =============================== */
+  // ===============================
+  // SEARCH FILTER
+  // ===============================
   useEffect(() => {
     if (!search) {
       setFilteredReturns(returns);
@@ -59,18 +60,19 @@ const ClientDashboard = () => {
     }
 
     setFilteredReturns(
-      returns.filter(r =>
-        r.id.toLowerCase().includes(search.toLowerCase()) ||
-        r.taxYear.includes(search)
+      returns.filter(
+        r =>
+          r.id.toLowerCase().includes(search.toLowerCase()) ||
+          r.taxYear.includes(search)
       )
     );
   }, [search, returns]);
 
   const latestReturn = returns[0];
 
-  /* ===============================
-     STATS
-     =============================== */
+  // ===============================
+  // STATS
+  // ===============================
   const stats = [
     {
       title: 'Total Filed',
@@ -81,19 +83,52 @@ const ClientDashboard = () => {
     },
     {
       title: 'Under Review',
-      value: returns.filter(r =>
-        r.status === 'under_review' || r.status === 'submitted'
+      value: returns.filter(
+        r => r.status === 'IN_REVIEW' || r.status === 'APPROVED'
       ).length,
       subtitle: 'Returns',
       icon: Clock,
     },
     {
       title: 'Approved',
-      value: returns.filter(r => r.status === 'approved').length,
+      value: returns.filter(r => r.status === 'APPROVED').length,
       subtitle: 'Returns',
       icon: CheckCircle,
     },
   ];
+
+  // ===============================
+  // FETCH NOTIFICATIONS
+  // ===============================
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/notifications');
+      const data = await res.json();
+      setNotifications(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // MARK NOTIFICATION AS READ
+  const markAsRead = async (id: number) => {
+    try {
+      await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+        method: 'PUT',
+      });
+      setNotifications(n =>
+        n.map((notif: any) =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const timelineSteps = [
     { title: 'Return Created', date: 'Completed', status: 'completed' as const },
@@ -103,7 +138,7 @@ const ClientDashboard = () => {
   ];
 
   return (
-    <DashboardLayout title="Dashboard" subtitle="Welcome back, Ahmed">
+    <DashboardLayout title="Dashboard" subtitle={`Welcome back, ${user.name}`}>
       {/* SEARCH BAR */}
       <Card className="p-5 mb-6">
         <div className="relative">
@@ -111,7 +146,7 @@ const ClientDashboard = () => {
           <Input
             placeholder="Search by Return ID or Tax Year"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             className="pl-12 h-12"
           />
         </div>
@@ -125,7 +160,7 @@ const ClientDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT */}
+        {/* LEFT SECTION */}
         <div className="lg:col-span-2 space-y-6">
           {/* ACTIONS */}
           <div className="grid md:grid-cols-2 gap-4">
@@ -152,7 +187,7 @@ const ClientDashboard = () => {
             {loading ? (
               <p className="p-6 text-muted-foreground">Loading...</p>
             ) : (
-              filteredReturns.slice(0, 5).map((r) => (
+              filteredReturns.slice(0, 5).map(r => (
                 <Link
                   key={r.id}
                   to={`/tracking/${r.id}`}
@@ -178,8 +213,9 @@ const ClientDashboard = () => {
           </Card>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT SECTION */}
         <div className="space-y-6">
+          {/* LATEST RETURN */}
           {latestReturn && (
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Latest Return Status</h3>
@@ -189,10 +225,39 @@ const ClientDashboard = () => {
               </p>
 
               {timelineSteps.map((step, i) => (
-                <TimelineItem key={i} {...step} isLast={i === timelineSteps.length - 1} />
+                <TimelineItem
+                  key={i}
+                  {...step}
+                  isLast={i === timelineSteps.length - 1}
+                />
               ))}
             </Card>
           )}
+
+          {/* NOTIFICATIONS PANEL */}
+          {/* <Card className="p-6">
+            <h3 className="font-semibold mb-4">Notifications</h3>
+            {notifications.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No notifications</p>
+            ) : (
+              <ul className="space-y-2">
+                {notifications.map(n => (
+                  <li
+                    key={n.id}
+                    className={`p-2 rounded-md cursor-pointer ${
+                      n.read ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-black'
+                    }`}
+                    onClick={() => markAsRead(n.id)}
+                  >
+                    <strong>{n.title}:</strong> {n.message}
+                    <span className="text-xs block mt-1 text-muted-foreground">
+                      {n.createdAt}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card> */}
         </div>
       </div>
     </DashboardLayout>

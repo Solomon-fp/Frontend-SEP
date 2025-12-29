@@ -19,6 +19,8 @@ import BillingPage from "./pages/client/BillingPage";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import VerificationPage from "./pages/employee/VerificationPage";
 import TaxCalculationPage from "./pages/employee/TaxCalculation";
+import GenerateBillingPage from "./pages/employee/generateBillingPage";
+import FinalApprovalPage from "./pages/employee/FinalApprovalPage";
 
 // FBR Pages
 import FBRDashboard from "./pages/fbr/FBRDashboard";
@@ -65,6 +67,8 @@ const AppRoutes = () => {
       <Route path="/employee/verify/:clientId" element={<ProtectedRoute><VerificationPage /></ProtectedRoute>} />
       <Route path="/employee/calculation" element={<ProtectedRoute><TaxCalculationPage /></ProtectedRoute>} />
       <Route path="/employee/requests" element={<ProtectedRoute><InfoRequestsPage userType="employee" /></ProtectedRoute>} />
+      <Route path="/employee/generateBill" element={<ProtectedRoute><GenerateBillingPage /></ProtectedRoute>} />
+      <Route path="/employee/final-approval" element={<ProtectedRoute><FinalApprovalPage /></ProtectedRoute>} />
 
       {/* FBR Routes */}
       <Route path="/fbr/dashboard" element={<ProtectedRoute><FBRDashboard /></ProtectedRoute>} />

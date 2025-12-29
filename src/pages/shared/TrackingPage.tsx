@@ -29,7 +29,7 @@ const TrackingPage = () => {
     try {
       setLoading(true);
 
-      const res = await fetch(`/api/client/returns?returnId=${id}`);
+      const res = await fetch(`http://localhost:5000/api/client/returns?returnId=${id}`);
       const data = await res.json();
 
       // supports array OR single object

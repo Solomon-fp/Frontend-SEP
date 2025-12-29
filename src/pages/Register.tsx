@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Eye, EyeOff, ArrowRight, ArrowLeft, Upload, Check, User, FileText, Lock } from 'lucide-react';
+import { Shield, Eye, EyeOff, ArrowRight, ArrowLeft, Check, User, FileText, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import axios from 'axios';
@@ -31,9 +31,15 @@ const Register = () => {
     role: 'client', // default role
   });
 
+  // Total steps adjust for employees (skip documents)
+  const totalSteps = formData.role === 'employee' ? 2 : 3;
+  const progress = (currentStep / totalSteps) * 100;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep < 3) {
+
+    // Skip documents step for employees
+    if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
       if (formData.password === formData.confirmPassword) {
@@ -45,15 +51,20 @@ const Register = () => {
         data.append("password", formData.password);
         data.append("role", formData.role);
 
-        if (formData.cnicfront) data.append("cnicfront", formData.cnicfront);
-        if (formData.cnicback) data.append("cnicback", formData.cnicback);
+        if (formData.role === 'client') {
+          if (formData.cnicfront) data.append("cnicfront", formData.cnicfront);
+          if (formData.cnicback) data.append("cnicback", formData.cnicback);
+        }
 
-        const res = await axios.post("http://localhost:5000/api/auth/register", data);
-
-        sessionStorage.setItem("token", res.data.token);
-        window.location.href = `${res.data.role}/dashboard`;
+        try {
+          const res = await axios.post("http://localhost:5000/api/auth/register", data);
+          sessionStorage.setItem("token", res.data.token);
+          window.location.href = `${res.data.role}/dashboard`;
+        } catch (error: any) {
+          alert(error.response?.data?.message || "Registration failed");
+        }
       } else {
-        alert("Password Must Match");
+        alert("Password must match");
       }
     }
   };
@@ -63,8 +74,6 @@ const Register = () => {
       setFormData({ ...formData, [field]: e.target.files[0] });
     }
   };
-
-  const progress = (currentStep / 3) * 100;
 
   return (
     <div className="min-h-screen flex">
@@ -130,12 +139,14 @@ const Register = () => {
             <p className="text-muted-foreground">Complete the steps below to get started</p>
           </div>
 
+          {/* Step Progress */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               {steps.map((step, index) => {
+                if (formData.role === 'employee' && step.id === 2) return null; // Skip documents step
                 const Icon = step.icon;
                 const isActive = step.id === currentStep;
-                const isComplete = step.id < currentStep;
+                const isComplete = step.id < currentStep || (formData.role === 'employee' && step.id > 1 && step.id < currentStep);
 
                 return (
                   <div key={step.id} className="flex items-center">
@@ -231,17 +242,60 @@ const Register = () => {
               </div>
             )}
 
-            {/* Step 2: Documents */}
-            {currentStep === 2 && (
+            {/* Step 2: Documents (client only) */}
+            {currentStep === 2 && formData.role === 'client' && (
               <div className="space-y-5 animate-fade-in">
-                {/* CNIC front/back upload fields unchanged */}
+                <div className="space-y-2">
+                  <Label htmlFor="cnicfront">Upload CNIC Front</Label>
+                  <Input
+                    id="cnicfront"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileUpload('cnicfront')}
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cnicback">Upload CNIC Back</Label>
+                  <Input
+                    id="cnicback"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileUpload('cnicback')}
+                    className="h-12"
+                  />
+                </div>
               </div>
             )}
 
             {/* Step 3: Security */}
             {currentStep === 3 && (
               <div className="space-y-5 animate-fade-in">
-                {/* Password fields unchanged */}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="h-12"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff /> : <Eye />} Show Password
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -252,7 +306,7 @@ const Register = () => {
                 </Button>
               )}
               <Button type="submit" size="lg" className={cn('flex-1', currentStep === 1 && 'w-full')}>
-                {currentStep === 3 ? 'Create Account' : 'Continue'}
+                {currentStep === totalSteps ? 'Create Account' : 'Continue'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>

@@ -4,37 +4,38 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatCard';
 import { CreditCard, Clock, CheckCircle } from 'lucide-react';
-
-interface BillItem {
-  name: string;
-  amount: number;
-}
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Bill {
   id: string;
-  description?: string;
-  amount?: number;
-  dueDate?: string;
-  status?: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
-  items?: BillItem[];
+  description: string;
+  amount: number;
+  dueDate: string;
+  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 }
-
 
 const formatCurrency = (n: number) => `Rs ${n.toLocaleString()}`;
 
-const BillingPage = () => {
+export default function BillingPage() {
+  const { user } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/billing')
-      .then(res => res.json())
-      .then(setBills);
-  }, []);
+  const fetchBills = async () => {
+    const res = await fetch(`http://localhost:5000/api/billing/client?clientId=${user.id}`);
+    const data = await res.json();
+    setBills(data);
+  };
+
+  fetchBills();
+}, []);
+
 
   const payNow = async (id: string) => {
     await fetch(`http://localhost:5000/api/billing/${id}/pay`, {
       method: 'POST',
     });
+
     setBills(b =>
       b.map(i => (i.id === id ? { ...i, status: 'PAID' } : i))
     );
@@ -45,14 +46,13 @@ const BillingPage = () => {
 
   return (
     <DashboardLayout title="Billing & Payments">
-
       {/* SUMMARY */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <Card className="p-6">
           <Clock className="text-warning mb-2" />
           <p>Pending</p>
           <h2 className="text-2xl font-bold">
-            {formatCurrency(pending.reduce((s, b) => s + (b.amount || 0), 0))}
+            {formatCurrency(pending.reduce((s, b) => s + b.amount, 0))}
           </h2>
         </Card>
 
@@ -60,7 +60,7 @@ const BillingPage = () => {
           <CheckCircle className="text-success mb-2" />
           <p>Paid</p>
           <h2 className="text-2xl font-bold">
-            {formatCurrency(paid.reduce((s, b) => s + (b.amount || 0), 0))}
+            {formatCurrency(paid.reduce((s, b) => s + b.amount, 0))}
           </h2>
         </Card>
 
@@ -82,7 +82,7 @@ const BillingPage = () => {
             </div>
             <div className="text-right">
               <h2 className="text-2xl font-bold">
-                {formatCurrency(bill.amount || 0)}
+                {formatCurrency(bill.amount)}
               </h2>
               <Button onClick={() => payNow(bill.id)}>Pay Now</Button>
             </div>
@@ -96,14 +96,11 @@ const BillingPage = () => {
         {bills.map(bill => (
           <div key={bill.id} className="flex justify-between border-b py-2">
             <span>{bill.description}</span>
-            <span>{formatCurrency(bill.amount || 0)}</span>
+            <span>{formatCurrency(bill.amount)}</span>
             <StatusBadge status={bill.status} />
           </div>
         ))}
       </Card>
-
     </DashboardLayout>
   );
-};
-
-export default BillingPage;
+}
