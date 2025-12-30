@@ -3,6 +3,8 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatusBadge } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   FileText,
   Plus,
@@ -13,7 +15,39 @@ import {
 import { mockTaxReturns, formatCurrency } from '@/lib/mockData';
 
 const TaxReturnsListPage = () => {
-  const clientReturns = mockTaxReturns.filter(r => r.clientId === 'c1');
+  const [clientReturns, setReturns] = useState([])
+  const {user} = useAuth();
+
+  useEffect(() => {
+  const fetchReturns = async () => {
+    if (!user?.id) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/client/dashboard/returns?clientId=${user.id}`
+      );
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch returns');
+      }
+
+      const data = await res.json();
+
+      setReturns(
+        data.map((r: any) => ({
+          ...r,
+          totalIncome: r.totalIncome ? Number(r.totalIncome) : 0,
+          totalTax: r.totalTax ? Number(r.totalTax) : 0,
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching tax returns:', error);
+      setReturns([]);
+    }
+  };
+
+  fetchReturns();
+}, [user]);
 
   return (
     <DashboardLayout title="Tax Returns" subtitle="Manage your tax filings">
