@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 // Auth Pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import FbrRegister from './pages/FbrRegister';
+import FbrLogin from "./pages/FbrLogin";
 
 // Client Pages
 import ClientDashboard from "./pages/client/ClientDashboard";
@@ -20,11 +22,11 @@ import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import VerificationPage from "./pages/employee/VerificationPage";
 import TaxCalculationPage from "./pages/employee/TaxCalculation";
 import GenerateBillingPage from "./pages/employee/generateBillingPage";
-import FinalApprovalPage from "./pages/employee/FinalApprovalPage";
 
 // FBR Pages
 import FBRDashboard from "./pages/fbr/FBRDashboard";
 import FBRReviewPage from "./pages/fbr/FBRReviewPage";
+import Decision from "./pages/fbr/Decision";
 
 // Shared Pages
 import TrackingPage from "./pages/shared/TrackingPage";
@@ -50,7 +52,9 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/" element={isAuthenticated ? <Navigate to="/client/dashboard" /> : <Navigate to="/login" />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/fbr/login" element={<FbrLogin />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/fbr/register" element={<FbrRegister />} />
 
       {/* Client Routes */}
       <Route path="/client/dashboard" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
@@ -68,13 +72,12 @@ const AppRoutes = () => {
       <Route path="/employee/calculation" element={<ProtectedRoute><TaxCalculationPage /></ProtectedRoute>} />
       <Route path="/employee/requests" element={<ProtectedRoute><InfoRequestsPage userType="employee" /></ProtectedRoute>} />
       <Route path="/employee/generateBill" element={<ProtectedRoute><GenerateBillingPage /></ProtectedRoute>} />
-      <Route path="/employee/final-approval" element={<ProtectedRoute><FinalApprovalPage /></ProtectedRoute>} />
 
       {/* FBR Routes */}
       <Route path="/fbr/dashboard" element={<ProtectedRoute><FBRDashboard /></ProtectedRoute>} />
-      <Route path="/fbr/returns" element={<ProtectedRoute><FBRDashboard /></ProtectedRoute>} />
+      <Route path="/fbr/returns" element={<ProtectedRoute><FBRReviewPage /></ProtectedRoute>} />
       <Route path="/fbr/review/:returnId" element={<ProtectedRoute><FBRReviewPage /></ProtectedRoute>} />
-      <Route path="/fbr/decisions" element={<ProtectedRoute><FBRDashboard /></ProtectedRoute>} />
+      <Route path="/fbr/decisions" element={<ProtectedRoute><Decision /></ProtectedRoute>} />
 
       {/* Shared Routes */}
       <Route path="/tracking" element={<ProtectedRoute><TrackingPage /></ProtectedRoute>} />

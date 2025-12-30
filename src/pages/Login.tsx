@@ -12,8 +12,8 @@ import axios from "axios";
 const roles: { value: UserRole; label: string; description: string; icon: React.ElementType }[] = [
   { value: 'client', label: 'Client', description: 'File & track your tax returns', icon: Users },
   { value: 'employee', label: 'Employee', description: 'Verify & calculate taxes', icon: Building2 },
-  { value: 'fbr', label: 'FBR Officer', description: 'Review & approve returns', icon: Shield },
 ];
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -43,12 +43,13 @@ const Login = () => {
       alert(err.response?.data?.message || "Login failed");
     }
 
-    const dashboardRoutes: Record<UserRole, string> = {
-      client: '/client/dashboard',
-      employee: '/employee/dashboard',
-      fbr: '/fbr/dashboard',
-    };
-    navigate(dashboardRoutes[selectedRole]);
+    const dashboardRoutes: Record<'client' | 'employee', string> = {
+  client: '/client/dashboard',
+  employee: '/employee/dashboard',
+};
+
+window.location.href = `/${res.data.role}/dashboard`;
+
   };
 
   return (

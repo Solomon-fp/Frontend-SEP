@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatCard, StatusBadge } from '@/components/shared/StatCard';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import {
-  FileText,
   CheckCircle,
   XCircle,
   AlertTriangle,
@@ -13,15 +15,61 @@ import {
   Clock,
   BarChart3,
 } from 'lucide-react';
-import { mockTaxReturns, formatCurrency } from '@/lib/mockData';
+import { formatCurrency } from '@/lib/mockData';
+
+interface TaxReturn {
+  id: number;
+  clientName: string;
+  taxYear: string;
+  status: 'submitted' | 'under_review' | 'APPROVED' | 'REJECTED' | 'OBJECTION';
+  totalTax: number;
+  lastUpdated?: string;
+}
+
+interface Decision {
+  id: string;
+  returnId: string;
+  client: string;
+  decision: 'approved' | 'rejected' | 'objection';
+  date: string;
+  amount: number;
+}
 
 const FBRDashboard = () => {
-  const submittedReturns = mockTaxReturns.filter(r => 
+  const [taxReturns, setTaxReturns] = useState<TaxReturn[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchReturns = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get('http://localhost:5000/api/fbr/dashboard/returns');
+        const formatted = res.data.map(r => ({
+          ...r,
+          totalTax: Number(r.totalTax),
+        }));
+
+        setTaxReturns(formatted);
+
+      } catch (err) {
+        console.error(err);
+        setError('Failed to fetch tax returns.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReturns();
+  }, []);
+
+  const submittedReturns = taxReturns.filter(r =>
     r.status === 'submitted' || r.status === 'under_review'
   );
-  const approvedReturns = mockTaxReturns.filter(r => r.status === 'approved');
-  const rejectedReturns = mockTaxReturns.filter(r => r.status === 'rejected');
-  const objectionReturns = mockTaxReturns.filter(r => r.status === 'objection');
+  const approvedReturns = taxReturns.filter(r => r.status === 'APPROVED');
+  const rejectedReturns = taxReturns.filter(r => r.status === 'REJECTED');
+  const objectionReturns = taxReturns.filter(r => r.status === 'OBJECTION');
 
   const stats = [
     {
@@ -53,21 +101,47 @@ const FBRDashboard = () => {
     },
   ];
 
-  const recentDecisions = [
-    { id: 'D-001', returnId: 'TR-2024-002', client: 'Fatima Zahra', decision: 'approved', date: '2024-12-18', amount: 90000 },
-    { id: 'D-002', returnId: 'TR-2024-005', client: 'Bilal Ahmed', decision: 'rejected', date: '2024-12-17', amount: 45000 },
-    { id: 'D-003', returnId: 'TR-2024-004', client: 'Aisha Malik', decision: 'objection', date: '2024-12-16', amount: 280000 },
-    { id: 'D-004', returnId: 'TR-2024-006', client: 'Hassan Shah', decision: 'approved', date: '2024-12-15', amount: 156000 },
-  ];
+  const recentDecisions: Decision[] = taxReturns
+    .filter(r => ['APPROVED', 'REJECTED', 'OBJECTION'].includes(r.status))
+    .sort((a, b) => (b.lastUpdated || '').localeCompare(a.lastUpdated || ''))
+    .slice(0, 4)
+    .map(r => ({
+      id: r.id.toString(),
+      returnId: `TR-${r.id}`,
+      client: r.clientName,
+      decision: r.status.toLowerCase() as 'approved' | 'rejected' | 'objection',
+      date: r.lastUpdated?.split('T')[0] || '',
+      amount: Number(r.totalTax),
+    }));
 
   const getDecisionIcon = (decision: string) => {
     switch (decision) {
-      case 'approved': return <CheckCircle className="w-4 h-4 text-success" />;
-      case 'rejected': return <XCircle className="w-4 h-4 text-destructive" />;
-      case 'objection': return <AlertTriangle className="w-4 h-4 text-warning" />;
-      default: return null;
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-success" />;
+      case 'rejected':
+        return <XCircle className="w-4 h-4 text-destructive" />;
+      case 'objection':
+        return <AlertTriangle className="w-4 h-4 text-warning" />;
+      default:
+        return null;
     }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="FBR Officer Dashboard" subtitle="Tax return review and decisions">
+        <div className="text-center py-20 text-muted-foreground">Loading dashboard data...</div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="FBR Officer Dashboard" subtitle="Tax return review and decisions">
+        <div className="text-center py-20 text-destructive">{error}</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="FBR Officer Dashboard" subtitle="Tax return review and decisions">
@@ -98,7 +172,7 @@ const FBRDashboard = () => {
               </div>
             </div>
             <div className="divide-y divide-border">
-              {submittedReturns.map((taxReturn) => (
+              {submittedReturns.map(taxReturn => (
                 <div key={taxReturn.id} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
@@ -127,7 +201,7 @@ const FBRDashboard = () => {
             </div>
           </Card>
 
-          {/* Decision Log */}
+          {/* Recent Decisions */}
           <Card className="card-elevated overflow-hidden">
             <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between">
@@ -154,7 +228,7 @@ const FBRDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {recentDecisions.map((decision) => (
+                  {recentDecisions.map(decision => (
                     <tr key={decision.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium">{decision.returnId}</td>
                       <td className="px-4 py-3 text-sm">{decision.client}</td>
@@ -176,7 +250,6 @@ const FBRDashboard = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Statistics */}
           <Card className="card-elevated p-6">
             <div className="flex items-center gap-3 mb-4">
               <BarChart3 className="w-5 h-5 text-primary" />
@@ -207,14 +280,13 @@ const FBRDashboard = () => {
             </div>
           </Card>
 
-          {/* Priority Queue */}
           <Card className="card-elevated p-6">
             <h3 className="font-semibold mb-4">Priority Queue</h3>
             <div className="space-y-3">
-              {mockTaxReturns
+              {taxReturns
                 .filter(r => r.totalTax > 100000)
                 .slice(0, 3)
-                .map((taxReturn) => (
+                .map(taxReturn => (
                   <Link
                     key={taxReturn.id}
                     to={`/fbr/review/${taxReturn.id}`}

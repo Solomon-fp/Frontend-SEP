@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
+
 import {
   Select,
   SelectContent,
@@ -59,26 +60,31 @@ const TaxReturnWizard = () => {
   const progress = (currentStep / steps.length) * 100;
 
   const handleNext = async () => {
+    console.log(user)
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     } else {
       const data = new FormData();
       const date = new Date().toISOString();
+      console.log(date)
 
       data.append("clientId", user.id);
       data.append("clientName", user.name);
       data.append("taxYear", taxYear.toString());
       data.append("status", "IN_REVIEW");
+      data.append("fbrStatus", "UNDER_REVIEW")
       data.append("submittedDate", date);
       data.append("totalIncome", totalIncome.toString());
       data.append("totalTax", "0"); // No deductions
       data.append("lastUpdated", date);
+        console.log(data)
 
       if (documents.length > 0) {
         data.append("documents", documents[0]);
       }
 
       try {
+        console.log(Object.fromEntries(data));
         const response = await axios.post("http://localhost:5000/api/client/returns", data);
         const result = response.data;
         if (result.success) {
@@ -106,6 +112,10 @@ const TaxReturnWizard = () => {
     if (e.target.files) setDocuments([...documents, ...Array.from(e.target.files)]);
   };
   const removeDocument = (index: number) => setDocuments(documents.filter((_, i) => i !== index));
+
+  
+
+
 
   return (
     <DashboardLayout title="File Tax Return" subtitle="Complete all steps to submit your return">
